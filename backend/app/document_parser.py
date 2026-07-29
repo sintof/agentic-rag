@@ -13,6 +13,8 @@ import fitz  # PyMuPDF
 from docx import Document as DocxDocument
 from pptx import Presentation
 
+from .config import settings
+
 SUPPORTED_EXTENSIONS = {".txt", ".pdf", ".docx", ".pptx"}
 
 
@@ -51,16 +53,26 @@ def caption_image(image_bytes: bytes, mime: str = "image/png") -> str:
         return f"[Image present, captioning failed: {exc}]"
 
 
-def extract_text_and_images(file_path: str) -> str:
-    """PDF-specific: pulls page text AND embedded images (captioned) into one text stream."""
+def extract_text_and_images(file_path: str, max_images: int | None = None) -> str:
+    """PDF-specific: pulls page text AND embedded images (captioned) into one text stream.
+
+    max_images caps how many images get sent to the vision model per document — each
+    caption is a real API call against the shared class quota, so an upload stuffed
+    with hundreds of embedded images (deliberately or not) can't run up unbounded
+    usage. Page text is still extracted for every page regardless of this cap.
+    """
+    max_images = settings.max_images_per_document if max_images is None else max_images
     doc = fitz.open(file_path)
     parts: list[str] = []
+    images_captioned = 0
     for page_index, page in enumerate(doc, start=1):
         page_text = page.get_text().strip()
         if page_text:
             parts.append(page_text)
 
-        for image_index, img in enumerate(page.get_images(full=True), start=1):
+        for img in page.get_images(full=True):
+            if images_captioned >= max_images:
+                break
             xref = img[0]
             try:
                 base_image = doc.extract_image(xref)
@@ -72,8 +84,11 @@ def extract_text_and_images(file_path: str) -> str:
                 continue
             caption = caption_image(image_bytes, mime=f"image/{ext}")
             parts.append(f"[Image on page {page_index}]: {caption}")
+            images_captioned += 1
 
     doc.close()
+    if images_captioned >= max_images:
+        parts.append(f"[Note: only the first {max_images} images in this document were captioned.]")
     return "\n\n".join(parts)
 
 

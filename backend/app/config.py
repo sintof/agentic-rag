@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     file_storage_path: str = "./uploads"
     max_generation_retries: int = 2
 
+    max_upload_bytes: int = 15 * 1024 * 1024  # 15MB
+    max_images_per_document: int = 20
+    max_extracted_chars: int = 300_000
+
     proxy_base_url: str = "https://saidazam-litellm-proxy.hf.space/v1"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")

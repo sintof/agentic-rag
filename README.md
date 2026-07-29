@@ -9,6 +9,14 @@ it grades its own retrieved evidence, falls back to web search when the document
 weak, and checks its own answer for hallucination before replying — regenerating (up
 to a retry cap) if it fails that check.
 
+## Live
+
+- **Frontend**: https://rag.froton.uz
+- **Backend**: https://ragapi.froton.uz (`/health`, `/ingest`, `/chat`)
+
+Deployed on a self-managed VPS (Docker + Caddy), not a free-tier host — see
+[Deploy](#deploy) for why and how.
+
 ## Architecture
 
 ```mermaid
@@ -198,39 +206,56 @@ Three cases traced to the specific node that produced the failure mode:
 
 - ✅ LangGraph decision graph — architecture diagram above
 - ✅ Ingest pipeline — diagram above
-- ✅ Frontend screenshot showing agent steps + citations — see `docs/` (or run it
-  locally per the instructions above; the UI renders step pills and a sources list
-  for every answer)
+- ✅ Frontend screenshot showing agent steps + citations — live at
+  [rag.froton.uz](https://rag.froton.uz); the UI renders step pills and a sources
+  list for every answer
 - ✅ Metrics table — Evaluation section above
 
-## Deploy (free tier)
+## Deploy
 
-### Backend → Hugging Face Spaces (Docker)
+**Live deploy is on a self-managed VPS**, not Hugging Face Spaces / Vercel as the
+course guide suggests as the free-tier default. Reason: this account's Hugging Face
+tier returns `402 Payment Required` for Docker Spaces on free `cpu-basic` hardware
+(Docker SDK Spaces now require HF PRO) — discovered while actually trying to deploy
+there, not assumed up front. Vercel was also a poor fit independently: its serverless
+functions have no persistent disk, so the vector store would need a *third* external
+account (Qdrant Cloud) just to survive between requests, plus real risk of exceeding
+Vercel's function size limit with `langgraph + langchain + qdrant-client + PyMuPDF`
+bundled together. A VPS already running Docker + Caddy sidesteps all three problems
+with zero extra accounts.
 
-1. Create a new Space at huggingface.co/new-space → SDK: **Docker**.
-2. Push this repo's `backend/` contents to the Space (or point the Space at this repo
-   with `backend/` as the subdirectory, per HF's monorepo support).
-3. In the Space's **Settings → Repository secrets**, add `GEMINI_API_KEY` (and
-   `TAVILY_API_KEY` if using web fallback). Never commit `.env`.
-4. The Dockerfile listens on port 7860 (HF Spaces' required port) — no changes needed.
-5. Once built, the Space URL's `/health` should return `{"status": "ok"}`.
+### What's actually running
 
-### Frontend → Vercel
+- `~/apps/agentic-rag-api/` — the FastAPI backend, Docker Compose, joined to the
+  shared `web` network, no published ports (Caddy is the only public entry point,
+  matching every other app on this box). Persistent bind mounts for `qdrant_data/`
+  and `uploads/`, so documents survive a container restart.
+- `~/apps/agentic-rag-web/dist/` — the built frontend, served by Caddy's
+  `file_server` directly (bind-mounted into the shared `caddy` container).
+- Resource-capped at **1 CPU / 512MB** (`deploy.resources.limits` in its
+  `docker-compose.yml`) — generous headroom over its actual ~225MB / <1% CPU
+  idle footprint, but bounded so it can't run away on this shared box. This
+  service does no local model inference (everything routes through the class
+  proxy), so it's mostly idle waiting on network calls, not CPU-bound.
+- Caddy handles TLS (Cloudflare DNS-01) and reverse-proxies `ragapi.froton.uz` →
+  the container; `rag.froton.uz` is served as a static site.
 
-1. Import this repo into Vercel, set the project root to `frontend/`.
-2. Framework preset: Vite. Build command `npm run build`, output dir `dist`.
-3. Add an environment variable `VITE_API_URL` = your HF Space's public URL (no
-   trailing slash).
-4. Deploy. The static site calls `${VITE_API_URL}/ingest` and `/chat` directly.
+### Free-tier alternative (if you don't have your own server)
 
-### Known limitation: ephemeral vector store
+The code supports it without changes — `backend/app/vectorstore.py` already
+branches on whether `QDRANT_URL` is set, so pointing it at a free
+[Qdrant Cloud](https://cloud.qdrant.io) cluster instead of embedded on-disk mode
+is enough to make it serverless-safe (embedded Qdrant needs a persistent disk,
+which Vercel/most free serverless hosts don't offer):
 
-Embedded Qdrant (default, `QDRANT_URL` unset) writes to the container's local disk.
-On Hugging Face Spaces' free tier, that disk does **not** persist across a Space
-restart/rebuild — documents will need to be re-ingested. For persistence across
-restarts, point `QDRANT_URL` at a free [Qdrant Cloud](https://cloud.qdrant.io) cluster
-instead (no code changes needed — `vectorstore.py` already branches on whether
-`QDRANT_URL` is set).
+1. **Backend → Hugging Face Spaces (Docker)** — requires HF PRO for Docker SDK on
+   free `cpu-basic` hardware as of this writing (confirmed via `402` on an
+   unpaid account). If that's paid for: new Space → SDK Docker → push
+   `backend/` contents → set `GEMINI_API_KEY` as a repo secret → set
+   `QDRANT_URL` to a hosted cluster (the local disk doesn't persist across
+   Space restarts) → Dockerfile already listens on port 7860.
+2. **Frontend → Vercel** — import repo, project root `frontend/`, framework
+   Vite, env var `VITE_API_URL` = the backend's public URL.
 
 ## Repo layout
 
@@ -248,7 +273,8 @@ backend/
       nodes.py        retrieve / grade_documents / web_search / generate + routers
       graph.py        StateGraph wiring
   tests/test_agent.py  routing tests (happy path, web fallback, self-correction)
-  Dockerfile          HF Spaces (port 7860)
+  Dockerfile          listens on 7860; used for the VPS deploy (behind Caddy) —
+                      same image works unchanged on HF Spaces if using that route
 frontend/             static Vite chat UI
 sample_docs/          test fixtures used by tests/test_agent.py
 ```

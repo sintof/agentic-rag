@@ -3,6 +3,7 @@ from pathlib import Path
 from langchain_core.documents import Document
 from qdrant_client.http.models import FieldCondition, Filter, FilterSelector, MatchValue
 
+from .config import settings
 from .document_parser import chunk_text, extract_text, get_file_type, is_supported_file
 from .vectorstore import get_vectorstore
 
@@ -25,6 +26,14 @@ def ingest_file(file_path: str, original_filename: str) -> dict:
 
     file_type = get_file_type(original_filename)
     text = extract_text(file_path, file_type)
+
+    # Backstop against zip-bomb-style DOCX/PPTX (a small file that decompresses to a
+    # huge amount of text) — doesn't prevent the decompression cost itself (python-docx/
+    # pptx don't expose a size-limit hook), but bounds everything downstream: chunk
+    # count, embedding API calls, and storage.
+    if len(text) > settings.max_extracted_chars:
+        text = text[: settings.max_extracted_chars]
+
     chunks = chunk_text(text)
 
     if not chunks:
