@@ -1,0 +1,11 @@
+Photosynthesis and Cellular Energy
+
+Photosynthesis is the process by which plants, algae, and some bacteria convert light energy into chemical energy stored in glucose. The overall reaction takes carbon dioxide and water as inputs and, using light energy captured by chlorophyll, produces glucose and oxygen as outputs. This process occurs primarily in the chloroplasts of plant cells, specifically within structures called thylakoids, where the light-dependent reactions take place.
+
+The light-dependent reactions capture energy from sunlight and convert it into ATP and NADPH, which are then used in the Calvin cycle, also known as the light-independent reactions. The Calvin cycle takes place in the stroma of the chloroplast and uses the ATP and NADPH produced earlier to fix carbon dioxide into organic molecules, eventually forming glucose.
+
+The rate of photosynthesis depends on several environmental factors. At low light levels, the rate of photosynthesis is limited by light intensity — increasing the amount of light will increase the rate of the reaction. However, once light intensity is high enough, other factors become limiting. Carbon dioxide concentration is often the limiting factor in natural environments, since atmospheric CO2 levels are relatively low. Temperature also plays a role: photosynthetic enzymes work best within a specific temperature range, and rates drop off sharply outside that range because the enzymes involved in the Calvin cycle become less efficient or begin to denature.
+
+Cellular respiration is, in many ways, the reverse process. Cells — including plant cells — break down glucose in the presence of oxygen to release energy, producing carbon dioxide and water as byproducts. This means plants both photosynthesize and respire; during daylight, the rate of photosynthesis typically exceeds the rate of respiration, resulting in a net uptake of carbon dioxide and release of oxygen.
+
+Understanding this balance between photosynthesis and respiration is essential for topics ranging from agriculture and crop yield to global carbon cycles and climate science.

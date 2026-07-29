@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>Agentic RAG Assistant</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Agentic RAG Assistant</h1>
+      <p class="sub">Retrieve → grade → (web fallback) → generate → self-check. Ask a question about an ingested document.</p>
+    </header>
+
+    <section class="panel" id="ingest-panel">
+      <h2>1. Ingest a document</h2>
+      <form id="ingest-form">
+        <input type="file" id="file-input" accept=".pdf,.docx,.pptx,.txt" required />
+        <button type="submit">Upload &amp; Ingest</button>
+      </form>
+      <p id="ingest-status" class="status"></p>
+    </section>
+
+    <section class="panel" id="chat-panel">
+      <h2>2. Ask a question</h2>
+      <form id="chat-form">
+        <input type="text" id="question-input" placeholder="Ask something about your document..." required />
+        <button type="submit">Ask</button>
+      </form>
+
+      <div id="steps-row" class="steps-row hidden"></div>
+
+      <div id="answer-box" class="answer-box hidden">
+        <p id="answer-text"></p>
+        <div id="sources-list" class="sources-list"></div>
+      </div>
+
+      <p id="chat-status" class="status"></p>
+    </section>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
